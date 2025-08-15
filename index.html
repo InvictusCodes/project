@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic 3D Cockpit - Invictus AI Copilot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #F0F8FF 100%);
+            overflow: hidden;
+            height: 100vh;
+            perspective: 1000px;
+        }
+
+        .cockpit-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 30%, #F5F5DC 100%);
+            overflow: hidden;
+        }
+
+        .windshield {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(180deg, 
+                rgba(135, 206, 235, 0.3) 0%, 
+                rgba(240, 248, 255, 0.2) 50%, 
+                rgba(245, 245, 220, 0.1) 100%);
+            border-bottom: 8px solid #2c3e50;
+            z-index: 1;
+        }
+
+        .runway-view {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) perspective(800px) rotateX(75deg);
+            width: 200px;
+            height: 800px;
+            background: linear-gradient(0deg, 
+                #4a4a4a 0%, 
+                #666 20%, 
+                #4a4a4a 40%, 
+                #666 60%, 
+                #4a4a4a 80%, 
+                #666 100%);
+            border-left: 4px solid #ffff00;
+            border-right: 4px solid #ffff00;
+            z-index: 0;
+        }
+
+        .runway-markings {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                #ffffff 0px,
+                #ffffff 40px,
+                transparent 40px,
+                transparent 80px
+            );
+        }
+
+        .instrument-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 45%;
+            background: linear-gradient(145deg, #2c3e50, #34495e);
+            border-top: 6px solid #1a252f;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .main-instruments {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            height: 70%;
+        }
+
+        .instrument {
+            background: radial-gradient(circle, #1a1a1a, #000);
+            border: 4px solid #444;
+            border-radius: 50%;
+            position: relative;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.1);
+        }
+
+        .instrument.highlight {
+            border-color: #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.8), inset 0 0 20px rgba(0, 255, 0, 0.3);
+            animation: pulse-highlight 2s infinite;
+        }
+
+        @keyframes pulse-highlight {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .instrument-label {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff00;
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .instrument-needle {
+            position: absolute;
+            width: 2px;
+            height: 40%;
+            background: #ff0000;
+            top: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            transition: transform 1s ease;
+        }
+
+        .instrument.active .instrument-needle {
+            transform: translate(-50%, -100%) rotate(180deg);
+        }
+
+        .instrument.active {
+            background: radial-gradient(circle, #003300, #001100);
+            border-color: #00ff00;
+        }
+
+        .switch-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 25%;
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            border: 3px solid #1a252f;
+            border-radius: 15px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            align-items: center;
+        }
+
+        .switch {
+            background: linear-gradient(145deg, #555, #333);
+            border: 2px solid #666;
+            border-radius: 8px;
+            height: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            position: relative;
+        }
+
+        .switch.highlight {
+            border-color: #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+            animation: pulse-highlight 2s infinite;
+        }
+
+        .switch.active {
+            background: linear-gradient(145deg, #00ff00, #00cc00);
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+
+        .copilot-hologram {
+            position: absolute;
+            right: 50px;
+            top: 20%;
+            width: 300px;
+            height: 400px;
+            background: linear-gradient(145deg, 
+                rgba(0, 255, 255, 0.1), 
+                rgba(0, 200, 255, 0.2), 
+                rgba(0, 150, 255, 0.1));
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+            z-index: 20;
+            animation: hologram-flicker 3s infinite;
+        }
+
+        @keyframes hologram-flicker {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.7; }
+        }
+
+        .copilot-avatar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(145deg, #00ccff, #0099cc);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            animation: avatar-glow 2s infinite alternate;
+        }
+
+        @keyframes avatar-glow {
+            0% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.8); }
+        }
+
+        .copilot-name {
+            position: absolute;
+            top: 160px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .copilot-message {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 15px;
+            color: #00ffff;
+            font-size: 14px;
+            line-height: 1.4;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checklist-panel {
+            position: absolute;
+            left: 20px;
+            top: 20%;
+            width: 280px;
+            height: 50%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 15;
+        }
+
+        .checklist-title {
+            color: #00ff00;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            color: #fff;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .checklist-item.completed {
+            color: #00ff00;
+        }
+
+        .checklist-item.current {
+            color: #ffff00;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+
+        .checkbox {
+            width: 15px;
+            height: 15px;
+            border: 2px solid #666;
+            border-radius: 3px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox.checked {
+            background: #00ff00;
+            border-color: #00ff00;
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: #000;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00cc00);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .takeoff-ready {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(145deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.5s ease;
+            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.3);
+            z-index: 30;
+        }
+
+        .takeoff-ready.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .takeoff-ready:hover {
+            transform: translateX(-50%) translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255, 107, 53, 0.5);
+        }
+
+        .fullscreen-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-video iframe,
+        .fullscreen-video video {
+            width: 100%;
+            height: 100%;
+        }
+
+        .close-video {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: 2px solid #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+
+        .close-video:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+
+
+        @media (max-width: 768px) {
+            .copilot-hologram {
+                right: 5px;
+                top: 10%;
+                width: 180px;
+                height: 280px;
+            }
+            
+            .copilot-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 40px;
+            }
+            
+            .copilot-name {
+                font-size: 16px;
+                top: 120px;
+            }
+            
+            .copilot-message {
+                font-size: 11px;
+                padding: 10px;
+                bottom: 60px;
+                min-height: 60px;
+            }
+            
+            .checklist-panel {
+                left: 5px;
+                width: 160px;
+                height: 45%;
+                padding: 15px;
+                top: 15%;
+            }
+            
+            .checklist-title {
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+            
+            .checklist-item {
+                font-size: 10px;
+                margin: 6px 0;
+            }
+            
+            .checkbox {
+                width: 12px;
+                height: 12px;
+                margin-right: 8px;
+            }
+            
+            .main-instruments {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                padding: 10px;
+                height: 60%;
+            }
+            
+            .instrument {
+                min-height: 60px;
+            }
+            
+            .instrument-label {
+                font-size: 8px;
+                bottom: -20px;
+            }
+            
+            .switch-panel {
+                height: 35%;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+            
+            .switch {
+                height: 35px;
+                font-size: 8px;
+            }
+            
+            .takeoff-ready {
+                bottom: 30px;
+                padding: 15px 25px;
+                font-size: 14px;
+                z-index: 30;
+            }
+            
+            .instrument-panel {
+                height: 50%;
+            }
+            
+            .windshield {
+                height: 55%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .copilot-hologram {
+                width: 140px;
+                height: 220px;
+                right: 2px;
+            }
+            
+            .copilot-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 30px;
+            }
+            
+            .copilot-name {
+                font-size: 12px;
+                top: 90px;
+            }
+            
+            .copilot-message {
+                font-size: 9px;
+                padding: 8px;
+                bottom: 40px;
+                min-height: 50px;
+            }
+            
+            .checklist-panel {
+                width: 130px;
+                height: 40%;
+                padding: 10px;
+            }
+            
+            .checklist-title {
+                font-size: 12px;
+            }
+            
+            .checklist-item {
+                font-size: 8px;
+                margin: 4px 0;
+            }
+            
+            .main-instruments {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+                padding: 8px;
+            }
+            
+            .switch-panel {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 6px;
+                padding: 8px;
+            }
+            
+            .takeoff-ready {
+                padding: 12px 20px;
+                font-size: 12px;
+                z-index: 30;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cockpit-container">
+        <!-- Windshield and Runway View -->
+        <div class="windshield"></div>
+        <div class="runway-view">
+            <div class="runway-markings"></div>
+        </div>
+
+
+
+        <!-- Instrument Panel -->
+        <div class="instrument-panel">
+            <div class="main-instruments">
+                <div class="instrument" id="battery" onclick="activateSystem('battery')">
+                    <div class="instrument-needle"></div>
+                    <div class="instrument-label">BATTERY</div>
+                </div>
+                <div class="instrument" id="apu" onclick="activateSystem('apu')">
+                    <div class="instrument-needle"></div>
+                    <div class="instrument-label">APU</div>
+                </div>
+                <div class="instrument" id="avionics" onclick="activateSystem('avionics')">
+                    <div class="instrument-needle"></div>
+                    <div class="instrument-label">AVIONICS</div>
+                </div>
+                <div class="instrument" id="fuel" onclick="activateSystem('fuel')">
+                    <div class="instrument-needle"></div>
+                    <div class="instrument-label">FUEL PUMPS</div>
+                </div>
+                <div class="instrument" id="engine1" onclick="activateSystem('engine1')">
+                    <div class="instrument-needle"></div>
+                    <div class="instrument-label">ENGINE 1</div>
+                </div>
+                <div class="instrument" id="engine2" onclick="activateSystem('engine2')">
+                    <div class="instrument-needle"></div>
+                    <div class="instrument-label">ENGINE 2</div>
+                </div>
+            </div>
+
+            <div class="switch-panel">
+                <div class="switch" id="hydraulics" onclick="activateSystem('hydraulics')">HYDRAULICS</div>
+                <div class="switch" id="electrical" onclick="activateSystem('electrical')">ELECTRICAL</div>
+                <div class="switch" id="controls" onclick="activateSystem('controls')">FLIGHT CTRL</div>
+                <div class="switch" id="autopilot" onclick="activateSystem('autopilot')">AUTOPILOT</div>
+                <div class="switch" id="atc" onclick="activateSystem('atc')">ATC</div>
+                <div class="switch" id="flaps" onclick="activateSystem('flaps')">FLAPS</div>
+                <div class="switch" id="taxi" onclick="activateSystem('taxi')">TAXI</div>
+            </div>
+        </div>
+
+        <!-- Copilot Hologram -->
+        <div class="copilot-hologram">
+            <div class="copilot-avatar">👨‍✈️</div>
+            <div class="copilot-name">INVICTUS</div>
+            <div class="copilot-message" id="copilotMessage">
+                Good morning, Captain! I'm Invictus, your AI copilot. Let's begin our pre-flight checklist. First, please activate the battery and external power systems.
+            </div>
+        </div>
+
+        <!-- Checklist Panel -->
+        <div class="checklist-panel">
+            <div class="checklist-title">PRE-FLIGHT CHECKLIST</div>
+            <div class="checklist-item current" id="item0">
+                <div class="checkbox" id="check0"></div>
+                <span>Battery & External Power</span>
+            </div>
+            <div class="checklist-item" id="item1">
+                <div class="checkbox" id="check1"></div>
+                <span>APU Start & Stabilization</span>
+            </div>
+            <div class="checklist-item" id="item2">
+                <div class="checkbox" id="check2"></div>
+                <span>Avionics Master Switch</span>
+            </div>
+            <div class="checklist-item" id="item3">
+                <div class="checkbox" id="check3"></div>
+                <span>Fuel Pumps Activation</span>
+            </div>
+            <div class="checklist-item" id="item4">
+                <div class="checkbox" id="check4"></div>
+                <span>Engine 1 Start</span>
+            </div>
+            <div class="checklist-item" id="item5">
+                <div class="checkbox" id="check5"></div>
+                <span>Engine 2 Start</span>
+            </div>
+            <div class="checklist-item" id="item6">
+                <div class="checkbox" id="check6"></div>
+                <span>Hydraulic Systems Check</span>
+            </div>
+            <div class="checklist-item" id="item7">
+                <div class="checkbox" id="check7"></div>
+                <span>Electrical Systems Check</span>
+            </div>
+            <div class="checklist-item" id="item8">
+                <div class="checkbox" id="check8"></div>
+                <span>Flight Control Test</span>
+            </div>
+            <div class="checklist-item" id="item9">
+                <div class="checkbox" id="check9"></div>
+                <span>Autopilot & Navigation</span>
+            </div>
+            <div class="checklist-item" id="item10">
+                <div class="checkbox" id="check10"></div>
+                <span>ATC Clearance</span>
+            </div>
+            <div class="checklist-item" id="item11">
+                <div class="checkbox" id="check11"></div>
+                <span>Flaps Configuration</span>
+            </div>
+            <div class="checklist-item" id="item12">
+                <div class="checkbox" id="check12"></div>
+                <span>Taxi Checklist</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- Takeoff Button -->
+        <button class="takeoff-ready" id="takeoffBtn" onclick="initiateTakeoff()">
+            🛫 WE ARE READY FOR TAKEOFF 🛫
+        </button>
+    </div>
+
+    <!-- Fullscreen Video -->
+    <div class="fullscreen-video" id="fullscreenVideo">
+        <button class="close-video" onclick="closeVideo()">✕ CLOSE</button>
+        <div id="videoContainer"></div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        
+        const systems = {
+            battery: false, apu: false, avionics: false, fuel: false,
+            engine1: false, engine2: false, hydraulics: false, electrical: false,
+            controls: false, autopilot: false, atc: false, flaps: false, taxi: false
+        };
+
+        const checklistSteps = [
+            { system: 'battery', message: "Excellent! Battery is online. Now let's start the APU (Auxiliary Power Unit) for independent power generation." },
+            { system: 'apu', message: "Perfect! APU is running and stabilized. Now activate the avionics master switch to bring all navigation systems online." },
+            { system: 'avionics', message: "Great work! Avionics are active. Next, activate the fuel pumps to ensure proper fuel flow to the engines." },
+            { system: 'fuel', message: "Fuel pumps are running smoothly. Time to start our engines. Begin with Engine 1 startup sequence." },
+            { system: 'engine1', message: "Engine 1 is spooling up nicely! Now start Engine 2 to complete our powerplant initialization." },
+            { system: 'engine2', message: "Both engines are running at optimal parameters! Let's check the hydraulic systems first." },
+            { system: 'hydraulics', message: "Hydraulics confirmed and operating normally. Now check electrical systems to ensure all power distribution is optimal." },
+            { system: 'electrical', message: "Electrical systems show green across the board. Now test flight control surfaces." },
+            { system: 'controls', message: "Flight controls responding normally. Initialize autopilot and navigation systems for our flight plan." },
+            { system: 'autopilot', message: "Autopilot and navigation are ready. Request ATC clearance for our departure." },
+            { system: 'atc', message: "ATC clearance received! Configure flaps for takeoff - set to takeoff position." },
+            { system: 'flaps', message: "Flaps set for takeoff. Complete the taxi checklist and we'll be ready to proceed to the runway." },
+            { system: 'taxi', message: "Outstanding work, Captain! All pre-flight checks complete. We are ready for takeoff!" }
+        ];
+
+        function highlightCurrentSystem() {
+            // Remove all highlights
+            document.querySelectorAll('.instrument, .switch').forEach(el => {
+                el.classList.remove('highlight');
+            });
+            
+            if (currentStep < checklistSteps.length) {
+                const currentSystem = checklistSteps[currentStep].system;
+                const element = document.getElementById(currentSystem);
+                if (element) {
+                    element.classList.add('highlight');
+                }
+            }
+        }
+
+        function activateSystem(systemName) {
+            if (currentStep >= checklistSteps.length) return;
+            
+            const expectedSystem = checklistSteps[currentStep].system;
+            if (systemName !== expectedSystem) {
+                updateCopilotMessage(`Captain, please follow the checklist sequence. We need to activate ${expectedSystem.toUpperCase()} next.`);
+                return;
+            }
+
+            systems[systemName] = true;
+            const element = document.getElementById(systemName);
+            element.classList.add('active');
+            element.classList.remove('highlight');
+
+            // Update checklist
+            const checkItem = document.getElementById(`item${currentStep}`);
+            const checkbox = document.getElementById(`check${currentStep}`);
+            checkItem.classList.remove('current');
+            checkItem.classList.add('completed');
+            checkbox.classList.add('checked');
+
+            currentStep++;
+            updateProgress();
+
+            if (currentStep < checklistSteps.length) {
+                setTimeout(() => {
+                    updateCopilotMessage(checklistSteps[currentStep - 1].message);
+                    
+                    // Highlight next item
+                    const nextItem = document.getElementById(`item${currentStep}`);
+                    if (nextItem) {
+                        nextItem.classList.add('current');
+                    }
+                    highlightCurrentSystem();
+                }, 1000);
+            } else {
+                setTimeout(() => {
+                    updateCopilotMessage("We are ready for takeoff, Captain! All systems are green and we have clearance. Click the takeoff button when ready.");
+                    document.getElementById('takeoffBtn').classList.add('show');
+                }, 1500);
+            }
+        }
+
+        function updateCopilotMessage(message) {
+            document.getElementById('copilotMessage').textContent = message;
+        }
+
+        function updateProgress() {
+            const progress = (currentStep / checklistSteps.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        function initiateTakeoff() {
+            if (currentStep < checklistSteps.length) {
+                updateCopilotMessage("Not ready for takeoff yet! Please complete all pre-flight procedures first.");
+                return;
+            }
+            
+            updateCopilotMessage("Tower, this is Flight 001, ready for takeoff. Initiating departure sequence... Enjoy the flight, Captain! ✈️");
+            
+            setTimeout(() => {
+                showFullscreenVideo();
+            }, 3000);
+        }
+
+        function showFullscreenVideo() {
+            const fullscreenDiv = document.getElementById('fullscreenVideo');
+            const container = document.getElementById('videoContainer');
+            
+            container.innerHTML = '';
+            
+            // Default takeoff video - Boeing 737 cockpit takeoff
+            const defaultVideoId = 'WuJXXJBfMdU'; // Cockpit takeoff video
+            
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${defaultVideoId}?autoplay=1&rel=0&start=10`;
+            iframe.width = '100%';
+            iframe.height = '100%';
+            iframe.frameBorder = '0';
+            iframe.allowFullscreen = true;
+            iframe.allow = 'autoplay; fullscreen';
+            container.appendChild(iframe);
+            
+            fullscreenDiv.style.display = 'flex';
+        }
+
+        function closeVideo() {
+            document.getElementById('fullscreenVideo').style.display = 'none';
+            updateCopilotMessage("Flight complete! Excellent work, Captain. Ready for another mission?");
+        }
+
+        // Initialize
+        highlightCurrentSystem();
+        updateProgress();
+
+        // Add some ambient cockpit sounds simulation
+        setInterval(() => {
+            if (systems.apu || systems.engine1 || systems.engine2) {
+                // Simulate system activity with subtle visual feedback
+                const activeInstruments = document.querySelectorAll('.instrument.active');
+                activeInstruments.forEach(instrument => {
+                    const needle = instrument.querySelector('.instrument-needle');
+                    if (needle) {
+                        const currentRotation = parseInt(needle.style.transform.match(/rotate\((\d+)deg\)/) || [0, 180])[1];
+                        needle.style.transform = `translate(-50%, -100%) rotate(${currentRotation + (Math.random() - 0.5) * 10}deg)`;
+                    }
+                });
+            }
+        }, 2000);
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96f4954733467143',t:'MTc1NTIxNzgyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
